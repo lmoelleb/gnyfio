@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+
+enum PinMode {
+	INPUT = 0;
+	OUTPUT = 1;
+	PWM_OUTPUT = 2;
+	GPIO_CLOCK = 3;
+}
+
+message SetPinModeRequest {
+	int32 pin = 1;
+	PinMode mode = 2;
+}
+
+message SetPinModeResponse {
+	double timestampNs = 1;
+}
+
+message WritePinRequest {
+	int32 pin = 1;
+	oneof value {
+		bool digital = 2;
+		float pwm = 3;
+	}
+}
+
+message WritePinResponse {
+	double timestampNs = 1;
+}
+
+message ReadPinRequest {
+	int32 pin = 1;
+}
+
+message ReadPinResponse {
+	double timestampNs = 1;
+	oneof value {
+		// No ADC in the current raspberry pi
+		bool digital = 2;
+	}
+}
+
+service GnyfioService {
+	rpc SetPinMode (SetPinModeRequest) returns (SetPinModeResponse);
+}
