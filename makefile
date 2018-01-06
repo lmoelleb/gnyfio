@@ -10,11 +10,11 @@ PROTODIR := $(SRCDIR)/proto
 PROTOBASENAME := gnyfio
 PROTOFILE := $(PROTODIR)/$(PROTOBASENAME).proto
 GENERATEDDIR := build/gen
-GRPCGENERATEDCCFILE := $(GENERATEDDIR)/$(PROTOBASENAME).pb.cc
- 
+PROTOGENERATEDCCFILE := $(GENERATEDDIR)/$(PROTOBASENAME).pb.cc
+GRPCGENERATEDCCFILE := $(GENERATEDDIR)/$(PROTOBASENAME).grpc.pb.cc 
 SRCEXT := cpp
 SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
-OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o)) $(GENERATEDDIR)/$(PROTOBASENAME).o
+OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o)) $(GENERATEDDIR)/$(PROTOBASENAME).o $(GENERATEDDIR)/$(PROTOBASENAME).grpc.o
 CFLAGS := -g # -Wall
 LIB := -lwiringPi -lgrpc++ -lgrpc++_reflection -ldl -lprotobuf
 INC := -I include
@@ -24,25 +24,35 @@ $(TARGET): $(OBJECTS)
 	@echo " Linking..."
 	@echo " $(CC) $^ -o $(TARGET) $(LIB)"; $(CC) $^ -o $(TARGET) $(LIB)
 
+# TODO: Refector so there is no copy-paste to get the generated code compiled.
 $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	@mkdir -p $(BUILDDIR)
 	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) -c -o $@ $<
 
-
-$(GENERATEDDIR)/$(PROTOBASENAME).o: $(GRPCGENERATEDCCFILE)
+$(GENERATEDDIR)/$(PROTOBASENAME).o: $(PROTOGENERATEDCCFILE)
 	@mkdir -p $(BUILDDIR)
 	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) -c -o $@ $<
+	
+$(GENERATEDDIR)/$(PROTOBASENAME).grpc.o: $(GRPCGENERATEDCCFILE)
+	@mkdir -p $(BUILDDIR)
+	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) -c -o $@ $<	
 
 	
-$(GRPCGENERATEDCCFILE): $(PROTOFILE)
-	@echo " Compiling proto file..."
+$(PROTOGENERATEDCCFILE): $(PROTOFILE)
+	@echo " Generating protobuf source files..."
 	@mkdir -p $(GENERATEDDIR)
-	@protoc --proto_path=$(PROTODIR) --cpp_out=$(GENERATEDDIR) --plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin $(PROTOFILE)
+	@protoc --proto_path=$(PROTODIR) --cpp_out=$(GENERATEDDIR) $(PROTOFILE)
+
+$(GRPCGENERATEDCCFILE): $(PROTOFILE)
+	@echo " Generating gRPC source files..."
+	@mkdir -p $(GENERATEDDIR)
+	@protoc --proto_path=$(PROTODIR) --grpc_out=$(GENERATEDDIR) --plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin $(PROTOFILE)
 	
 clean:
-	@echo " Cleaning..."; 
+	@echo " Cleaning...$(GRPCGENERATEDCCFILE)"; 
 	@echo " $(RM) -r $(BUILDDIR) $(TARGET)"; $(RM) -r $(BUILDDIR) $(TARGET)
-	
-grpc: $(GRPCGENERATEDCCFILE)
 
-.PHONY: clean
+# Updates GRPC source files only
+grpc: $(PROTOGENERATEDCCFILE)
+
+.PHONY: clean grpc
