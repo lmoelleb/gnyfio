@@ -24,8 +24,8 @@ $(TARGET): $(OBJECTS)
 	@echo " Linking..."
 	@echo " $(CC) $^ -o $(TARGET) $(LIB)"; $(CC) $^ -o $(TARGET) $(LIB)
 
-# TODO: Refector so there is no copy-paste to get the generated code compiled.
-$(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
+# TODO: Refactor so there is no copy-paste to get the generated code compiled.
+$(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT) grpc
 	@mkdir -p $(BUILDDIR)
 	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) -c -o $@ $<
 
@@ -53,6 +53,6 @@ clean:
 	@echo " $(RM) -r $(BUILDDIR) $(TARGET)"; $(RM) -r $(BUILDDIR) $(TARGET)
 
 # Updates GRPC source files only
-grpc: $(PROTOGENERATEDCCFILE)
+grpc: $(PROTOGENERATEDCCFILE) $(GRPCGENERATEDCCFILE)
 
 .PHONY: clean grpc
