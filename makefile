@@ -1,58 +1,45 @@
-# based on:
-# https://hiltmon.com/blog/2013/07/03/a-simple-c-plus-plus-project-structure/
-
 CC := g++
-SRCDIR := src
+
 BUILDDIR := build
-TARGETDIR := build
-TARGET := bin/gnyfio
-PROTODIR := $(SRCDIR)/proto
-PROTOBASENAME := gnyfio
-PROTOFILE := $(PROTODIR)/$(PROTOBASENAME).proto
-GENERATEDDIR := build/gen
-PROTOGENERATEDCCFILE := $(GENERATEDDIR)/$(PROTOBASENAME).pb.cc
-GRPCGENERATEDCCFILE := $(GENERATEDDIR)/$(PROTOBASENAME).grpc.pb.cc 
-SRCEXT := cpp
-SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
-OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o)) $(GENERATEDDIR)/$(PROTOBASENAME).o $(GENERATEDDIR)/$(PROTOBASENAME).grpc.o
-CFLAGS := -g # -Wall
+GENDIR := $(BUILDDIR)/gen
+TARGETDIR := bin
+SRCDIR := src
+
 LIB := -lwiringPi -lgrpc++ -lgrpc++_reflection -ldl -lprotobuf
+CFLAGS := -g # -Wall
 INC := -I include
 
-$(TARGET): $(OBJECTS)
-	@mkdir -p $(@D)
+all: $(TARGETDIR)/gnyfio
+
+$(TARGETDIR)/gnyfio: $(BUILDDIR)/gnyfio.o $(BUILDDIR)/gnyfio.grpc.pb.o $(BUILDDIR)/gnyfio.pb.o
+	@mkdir -p $(TARGETDIR)
 	@echo " Linking..."
-	@echo " $(CC) $^ -o $(TARGET) $(LIB)"; $(CC) $^ -o $(TARGET) $(LIB)
-
-# TODO: Refactor so there is no copy-paste to get the generated code compiled.
-$(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT) grpc
-	@mkdir -p $(BUILDDIR)
-	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) -c -o $@ $<
-
-$(GENERATEDDIR)/$(PROTOBASENAME).o: $(PROTOGENERATEDCCFILE)
-	@mkdir -p $(BUILDDIR)
-	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) -c -o $@ $<
+	@echo " $(CC) $^ -o $@ $(LIB)"; $(CC) $^ -o $@ $(LIB)
 	
-$(GENERATEDDIR)/$(PROTOBASENAME).grpc.o: $(GRPCGENERATEDCCFILE)
+$(BUILDDIR)/%.o: $(SRCDIR)/gnyfio.cpp $(GENDIR)/gnyfio.grpc.pb.h $(GENDIR)/gnyfio.pb.h
+	@mkdir -p $(BUILDDIR)
+	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) -c -o $@ $<	
+	
+$(BUILDDIR)/gnyfio.grpc.pb.o: $(GENDIR)/gnyfio.grpc.pb.cc
 	@mkdir -p $(BUILDDIR)
 	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) -c -o $@ $<	
 
+$(BUILDDIR)/gnyfio.pb.o: $(GENDIR)/gnyfio.pb.cc
+	@mkdir -p $(BUILDDIR)
+	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) -c -o $@ $<	
 	
-$(PROTOGENERATEDCCFILE): $(PROTOFILE)
-	@echo " Generating protobuf source files..."
-	@mkdir -p $(GENERATEDDIR)
-	@protoc --proto_path=$(PROTODIR) --cpp_out=$(GENERATEDDIR) $(PROTOFILE)
-
-$(GRPCGENERATEDCCFILE): $(PROTOFILE)
+$(GENDIR)/gnyfio.grpc.pb.h $(GENDIR)/gnyfio.grpc.pb.cc : $(SRCDIR)/proto/gnyfio.proto
 	@echo " Generating gRPC source files..."
-	@mkdir -p $(GENERATEDDIR)
-	@protoc --proto_path=$(PROTODIR) --grpc_out=$(GENERATEDDIR) --plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin $(PROTOFILE)
+	@mkdir -p $(GENDIR)
+	@protoc --proto_path=$(SRCDIR)/proto --grpc_out=$(GENDIR) --plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin $^
+	
+$(GENDIR)/gnyfio.pb.h $(GENDIR)/gnyfio.pb.cc : $(SRCDIR)/proto/gnyfio.proto
+	@echo " Generating Protocol Buffers source files..."
+	@mkdir -p $(GENDIR)
+	@protoc --proto_path=$(SRCDIR)/proto --cpp_out=$(GENDIR) $^
 	
 clean:
-	@echo " Cleaning...$(GRPCGENERATEDCCFILE)"; 
-	@echo " $(RM) -r $(BUILDDIR) $(TARGET)"; $(RM) -r $(BUILDDIR) $(TARGET)
+	@echo " Cleaning..."; 
+	@echo " $(RM) -r $(BUILDDIR) $(TARGETDIR)"; $(RM) -r $(BUILDDIR) $(TARGET)
 
-# Updates GRPC source files only
-grpc: $(PROTOGENERATEDCCFILE) $(GRPCGENERATEDCCFILE)
-
-.PHONY: clean grpc
+ 
