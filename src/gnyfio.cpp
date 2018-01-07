@@ -34,23 +34,32 @@ std::string getCmdOption(int argc, char **argv, const std::string& option, const
 {
 	std::string cmd;
 	std::string pattern = "-" + option + "=";
+	std::cout << "Looking for command line option " << pattern << "." << std::endl;
 	for (int i = 0; i < argc; i++)
 	{
 		std::string arg = argv[i];
 		if (0 == arg.find(pattern))
 		{
 			cmd = arg.substr(pattern.length());
+			std::cout << "Found the command line option " << option << " with value " << cmd << "." << std::endl;
 			return cmd;
 		}
 	} 
 	std::string envName = "GNYFIO_" + option;
 	
 	std::transform(envName.begin(), envName.end(),envName.begin(), ::toupper);
+
+	std::cout << "Command line option " << pattern << " not found." << std::endl;
+	std::cout << "Looking for environment variable " << envName << "." << std::endl;
 	
 	if (const char* env = std::getenv(envName.c_str()))
 	{
+		std::cout << "Found the environment variable " << envName << " with value " << env << "." << std::endl;
 		return env;
 	}
+	
+	std::cout << "Environment variable " << envName << " not found." << std::endl;
+	std::cout << "Using default value " << defaultValue << " for option " << option << "." << std::endl;
 	
 	return defaultValue;
 }
@@ -75,5 +84,4 @@ int main(int argc, char **argv)
 	std::cout << "Gnyfio server listening on " << server_address << std::endl;
 
 	server->Wait();
-	
 }
