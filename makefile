@@ -5,7 +5,8 @@ GENDIR := $(BUILDDIR)/gen
 TARGETDIR := bin
 SRCDIR := src
 
-LIB := -lwiringPi -lgrpc++ -lgrpc++_reflection -ldl -lprotobuf
+LIB :=  -lwiringPi -lgrpc++ -lgrpc++_reflection -lprotobuf 
+#LIB := -Wl,-Bstatic -lwiringPi -lgrpc++ -lgrpc++_reflection -lprotobuf -Wl,--as-needed
 CFLAGS := -g # -Wall
 INC := -I include
 
